@@ -1,5 +1,5 @@
 // API 기본 URL
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'http://localhost:8000';
 
 // API 호출 유틸리티
 class API {
@@ -31,44 +31,68 @@ class API {
     
     static async getMovies(search = null) {
         const params = new URLSearchParams();
-        if (search) params.append('search', search);
+        if (search) params.append('query', search);
         
         const queryString = params.toString();
-        const endpoint = queryString ? `/movies?${queryString}` : '/movies';
+        const endpoint = queryString ? `/api/movies?${queryString}` : '/api/movies';  // /api 추가
         
         return await this.request(endpoint);
     }
-    
-    static async getMovieDetail(movieId) {
-        return await this.request(`/movies/${movieId}`);
+
+    // 🆕 이 두 개를 getMovies 함수 바로 아래에 추가
+    static async getFilterOptions() {
+        const response = await fetch(`${API_BASE_URL}/api/movies/filter-options`);
+        
+        if (!response.ok) {
+            throw new Error('필터 옵션 로드 실패');
+        }
+        
+        return await response.json();
     }
+
     
-    static async getWeeklyRanking() {
-        return await this.request('/movies/weekly-ranking');
+    static async getMoviesWithFilter(filters) {
+        const params = new URLSearchParams();
+        
+        if (filters.genre) params.append('genre', filters.genre);
+        if (filters.country) params.append('country', filters.country);
+        if (filters.year) params.append('year', filters.year);
+        if (filters.minRating) params.append('min_rating', filters.minRating);
+        if (filters.maxRating) params.append('max_rating', filters.maxRating);
+        if (filters.query) params.append('query', filters.query);
+        if (filters.limit) params.append('limit', filters.limit);
+        
+        const response = await fetch(`${API_BASE_URL}/api/movies/filter?${params.toString()}`);
+        
+        if (!response.ok) {
+            throw new Error('필터링 실패');
+        }
+        
+        return await response.json();
     }
     
     // ==================== 리뷰 API ====================
     
     static async getReviews(movieId) {
-        return await this.request(`/reviews/${movieId}`);
+        return await this.request(`/api/reviews/${movieId}`);  // /api 추가
     }
     
     static async createReview(reviewData) {
-        return await this.request('/reviews', {
+        return await this.request('/api/reviews', {  // /api 추가
             method: 'POST',
             body: JSON.stringify(reviewData)
         });
     }
     
     static async updateReview(reviewId, reviewData) {
-        return await this.request(`/reviews/${reviewId}`, {
+        return await this.request(`/api/reviews/${reviewId}`, {  // /api 추가
             method: 'PUT',
             body: JSON.stringify(reviewData)
         });
     }
     
     static async deleteReview(reviewId) {
-        return await this.request(`/reviews/${reviewId}`, {
+        return await this.request(`/api/reviews/${reviewId}`, {  // /api 추가
             method: 'DELETE'
         });
     }
@@ -76,11 +100,11 @@ class API {
     // ==================== 검색 기록 API ====================
     
     static async getSearchHistory(userId) {
-        return await this.request(`/users/${userId}/search-history`);
+        return await this.request(`/api/users/${userId}/search-history`);
     }
-    
+
     static async addSearchHistory(userId, query) {
-        return await this.request(`/users/${userId}/search-history?query=${encodeURIComponent(query)}`, {
+        return await this.request(`/api/users/${userId}/search-history?query=${encodeURIComponent(query)}`, {
             method: 'POST'
         });
     }
@@ -88,7 +112,7 @@ class API {
     // ==================== 북마크 API ====================
     
     static async getBookmarks(userId) {
-        return await this.request(`/bookmarks/${userId}`);
+        return await this.request(`/api/bookmarks/${userId}`);
     }
     
     static async addBookmark(userId, movieId) {
@@ -110,13 +134,13 @@ class API {
     }
     
     static async removeBookmark(userId, movieId) {
-        return await this.request(`/bookmarks/${userId}/${movieId}`, {
+        return await this.request(`/api/bookmarks/${userId}/${movieId}`, {
             method: 'DELETE'
         });
     }
-    
+
     static async checkBookmark(userId, movieId) {
-        return await this.request(`/bookmarks/${userId}/check/${movieId}`);
+        return await this.request(`/api/bookmarks/${userId}/check/${movieId}`);
     }
 
     
@@ -128,7 +152,7 @@ class API {
             const formData = new FormData();
             formData.append('query', query);
             
-            const response = await fetch(`${API_BASE_URL}/crawl/search`, {
+            const response = await fetch(`${API_BASE_URL}/api/crawl/search`, {  // /api 추가
                 method: 'POST',
                 body: formData
             });
@@ -153,7 +177,7 @@ class API {
             formData.append('movie_id', movieId);
             formData.append('movie_title', movieTitle);
             
-            const response = await fetch(`${API_BASE_URL}/crawl/movie-by-id`, {
+            const response = await fetch(`${API_BASE_URL}/api/crawl/movie-by-id`, {  // /api 추가
                 method: 'POST',
                 body: formData
             });
@@ -177,7 +201,7 @@ class API {
             const formData = new FormData();
             formData.append('title', title);
             
-            const response = await fetch(`${API_BASE_URL}/crawl/movie`, {
+            const response = await fetch(`${API_BASE_URL}/api/crawl/movie`, {  // /api 추가
                 method: 'POST',
                 body: formData
             });
@@ -195,6 +219,28 @@ class API {
             throw error;
         }
     }
+
+    static async getWeeklyRanking() {
+        // 이렇게 수정
+        const response = await fetch(`${API_BASE_URL}/api/movies?sort_by=rating&limit=10`);
+        if (!response.ok) throw new Error('주간 랭킹 로드 실패');
+        
+        const movies = await response.json();
+        
+        // 이 3줄 추가
+        return movies.map((movie, index) => ({
+            ...movie,
+            rank: index + 1
+        }));
+    }
+
+    static async getMovieDetail(id) {
+        return await this.request(`/api/movies/${id}`);  // /api 추가
+    }
+
+    
+
+    
 
 
 }
@@ -233,28 +279,47 @@ class DataManager {
         this.searchHistory = [];
     }
     
-    // ==================== 검색 기록 ====================
     
+    
+    // ==================== 검색 기록 ====================
+
     async loadSearchHistory() {
         if (!this.currentUser) {
             this.searchHistory = [];
             return;
         }
         
+        // 로컬스토리지에서 검색 기록 불러오기
         try {
-            this.searchHistory = await API.getSearchHistory(this.currentUser.id);
+            const historyKey = `search_history_${this.currentUser.id}`;
+            const savedHistory = localStorage.getItem(historyKey);
+            this.searchHistory = savedHistory ? JSON.parse(savedHistory) : [];
         } catch (error) {
             console.error('검색 기록 로드 실패:', error);
             this.searchHistory = [];
         }
     }
-    
+
     async addSearchHistory(query) {
         if (!this.currentUser || !query.trim()) return;
         
         try {
-            await API.addSearchHistory(this.currentUser.id, query);
-            await this.loadSearchHistory();
+            const historyKey = `search_history_${this.currentUser.id}`;
+            
+            // 중복 제거
+            this.searchHistory = this.searchHistory.filter(q => q !== query);
+            
+            // 맨 앞에 추가
+            this.searchHistory.unshift(query);
+            
+            // 최대 10개만 유지
+            if (this.searchHistory.length > 10) {
+                this.searchHistory = this.searchHistory.slice(0, 10);
+            }
+            
+            // 로컬스토리지에 저장
+            localStorage.setItem(historyKey, JSON.stringify(this.searchHistory));
+            
         } catch (error) {
             console.error('검색 기록 추가 실패:', error);
         }

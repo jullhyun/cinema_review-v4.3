@@ -217,23 +217,35 @@ class ComponentRenderer {
             
             if (user) {
                 await dataManager.loadSearchHistory();
-                const historyHtml = dataManager.searchHistory.length > 0 ? `
+                
+                const historyHtml = `
                     <div class="search-history">
                         <button class="search-history-btn" onclick="toggleSearchHistory()">
                             <i class="fas fa-history"></i> 검색 이력
                         </button>
                         <div id="search-history-dropdown" class="search-history-dropdown">
-                            ${dataManager.searchHistory.map(query => `
-                                <div class="search-history-item" onclick="searchFromHistory('${query}')">${query}</div>
-                            `).join('')}
+                            ${dataManager.searchHistory.length > 0 
+                                ? dataManager.searchHistory.map(query => `
+                                    <div class="search-history-item" onclick="searchFromHistory('${query}')">${query}</div>
+                                `).join('')
+                                : '<div class="search-history-item" style="color: #999; cursor: default;">검색 이력이 없습니다</div>'
+                            }
                         </div>
                     </div>
-                ` : '';
+                `;
+
+                // 관리자 버튼 추가
+                const adminBtn = (user.user_id === 'admin' || user.user_id === 'eodud956') 
+                    ? `<a href="admin.html" class="btn btn-warning btn-small" style="text-decoration: none;">
+                        <i class="fas fa-cog"></i> 관리자
+                    </a>` 
+                    : '';
 
                 container.innerHTML = `
                     <div class="user-auth">
                         <div class="user-info">
                             <span>안녕하세요, ${user.nickname}님!</span>
+                            ${adminBtn}
                             <a href="mypage.html" class="btn btn-primary btn-small" style="text-decoration: none;">
                                 <i class="fas fa-user"></i> 마이페이지
                             </a>

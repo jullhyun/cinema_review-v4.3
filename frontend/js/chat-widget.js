@@ -1,57 +1,104 @@
 // frontend/js/chat-widget.js
-
+// ⭐ 기존 코드 + 더보기 버튼만 추가
 
 class ChatWidget {
     constructor() {
         this.isOpen = false;
         this.isLoading = false;
-        this.opacity = 1.0; // 기본 투명도
+        this.opacity = 1;
+        this.allMovies = [];  // ⭐ 전체 영화 목록
+        this.displayedCount = 0;  // ⭐ 현재 표시된 개수
         this.init();
     }
 
     init() {
+        this.createWidget();
         this.attachEventListeners();
-        this.loadOpacity(); // 저장된 투명도 불러오기
+        this.loadOpacity();
+    }
+
+    createWidget() {
+        const widgetHTML = `
+            <div class="chat-widget">
+                <button class="chat-toggle-btn" id="chat-toggle">
+                    💬
+                </button>
+
+                <div class="chat-panel" id="chat-panel">
+                    <div class="chat-header">
+                        <h3>🎬 영화 추천 AI</h3>
+                        <div class="chat-header-actions">
+                            <button class="opacity-btn" id="opacity-btn" title="투명도 조절">
+                                🎨
+                            </button>
+                            <button class="chat-close-btn" id="chat-close">✕</button>
+                        </div>
+                    </div>
+
+                    <div id="opacity-slider-container" class="opacity-slider-container" style="display: none;">
+                        <label>투명도: <span id="opacity-value">100%</span></label>
+                        <input type="range" id="opacity-slider" min="30" max="100" value="100">
+                    </div>
+
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="chat-welcome">
+                            <p>안녕하세요! 🎬</p>
+                            <p>영화를 추천해드립니다.</p>
+                            <p>예: "액션 영화 중에 전쟁 배경"</p>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-container">
+                        <input 
+                            type="text" 
+                            id="chat-input" 
+                            placeholder="영화를 물어보세요..."
+                            autocomplete="off"
+                        >
+                        <button id="chat-send-btn">전송</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', widgetHTML);
     }
 
     attachEventListeners() {
-        // 토글 버튼
-        const toggleBtn = document.getElementById('chat-toggle-btn');
+        const toggleBtn = document.getElementById('chat-toggle');
+        const closeBtn = document.getElementById('chat-close');
+        const sendBtn = document.getElementById('chat-send-btn');
+        const input = document.getElementById('chat-input');
+        const opacityBtn = document.getElementById('opacity-btn');
+        const opacitySlider = document.getElementById('opacity-slider');
+
         if (toggleBtn) {
             toggleBtn.addEventListener('click', () => this.togglePanel());
         }
 
-        // 닫기 버튼
-        const closeBtn = document.getElementById('chat-close-btn');
         if (closeBtn) {
             closeBtn.addEventListener('click', () => this.closePanel());
         }
 
-        // 🆕 투명도 토글 버튼 (없으면 무시)
-        const opacityToggleBtn = document.getElementById('opacity-toggle-btn');
-        if (opacityToggleBtn) {
-            opacityToggleBtn.addEventListener('click', () => this.toggleOpacitySlider());
-        }
-
-        // 🆕 투명도 슬라이더 (없으면 무시)
-        const opacitySlider = document.getElementById('opacity-slider');
-        if (opacitySlider) {
-            opacitySlider.addEventListener('input', (e) => this.updateOpacity(e.target.value));
-        }
-
-        // 전송 버튼
-        const sendBtn = document.getElementById('chat-send-btn');
         if (sendBtn) {
             sendBtn.addEventListener('click', () => this.sendMessage());
         }
 
-        // 입력 필드 엔터
-        const input = document.getElementById('chat-input');
         if (input) {
             input.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter' && !this.isLoading) {
                     this.sendMessage();
                 }
+            });
+        }
+
+        if (opacityBtn) {
+            opacityBtn.addEventListener('click', () => this.toggleOpacitySlider());
+        }
+
+        if (opacitySlider) {
+            opacitySlider.addEventListener('input', (e) => {
+                this.updateOpacity(e.target.value);
             });
         }
     }
@@ -64,21 +111,17 @@ class ChatWidget {
             panel.classList.add('open');
         } else {
             panel.classList.remove('open');
-            // 패널 닫을 때 슬라이더도 숨김
             document.getElementById('opacity-slider-container').style.display = 'none';
         }
     }
 
     closePanel() {
-        console.log('closePanel 호출됨'); // 👈 디버그
         const panel = document.getElementById('chat-panel');
         panel.classList.remove('open');
         this.isOpen = false;
         document.getElementById('opacity-slider-container').style.display = 'none';
-        console.log('채팅창 닫힘, isOpen:', this.isOpen); // 👈 디버그
     }
 
-    // 🆕 투명도 슬라이더 토글
     toggleOpacitySlider() {
         const container = document.getElementById('opacity-slider-container');
         if (container.style.display === 'none') {
@@ -88,20 +131,15 @@ class ChatWidget {
         }
     }
 
-    // 🆕 투명도 업데이트
     updateOpacity(value) {
         this.opacity = value / 100;
         const panel = document.getElementById('chat-panel');
         panel.style.opacity = this.opacity;
         
-        // 값 표시
         document.getElementById('opacity-value').textContent = value + '%';
-        
-        // 로컬 스토리지에 저장
         localStorage.setItem('chatOpacity', value);
     }
 
-    // 🆕 저장된 투명도 불러오기
     loadOpacity() {
         const savedOpacity = localStorage.getItem('chatOpacity');
         if (savedOpacity) {
@@ -117,23 +155,23 @@ class ChatWidget {
 
         if (!message || this.isLoading) return;
 
-        // 사용자 메시지 표시
         this.addMessage(message, 'user');
         input.value = '';
 
-        // 로딩 표시
         this.isLoading = true;
         document.getElementById('chat-send-btn').disabled = true;
         this.addTypingIndicator();
 
         try {
-            // ⭐ 전체 URL로 변경
             const response = await fetch('http://localhost:8000/ai/chat', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json' 
+                },
                 body: JSON.stringify({
                     question: message,
-                    top_k: 5
+                    top_k: 5,
+                    max_results: 20  // ⭐ 최대 20개 요청
                 })
             });
 
@@ -141,11 +179,14 @@ class ChatWidget {
 
             const data = await response.json();
             
-            // 로딩 제거
             this.removeTypingIndicator();
 
-            // AI 답변 표시
-            this.addMessage(data.answer, 'bot', data.movies);
+            // ⭐ 전체 영화 목록 저장
+            this.allMovies = data.movies || [];
+            this.displayedCount = 0;
+
+            // AI 답변 + 영화 카드 표시 (처음 3개만)
+            this.addMessage(data.answer, 'bot', this.allMovies.slice(0, 3));
 
         } catch (error) {
             console.error('Error:', error);
@@ -160,7 +201,6 @@ class ChatWidget {
     addMessage(text, sender, movies = null) {
         const messagesDiv = document.getElementById('chat-messages');
         
-        // 환영 메시지 제거
         const welcome = messagesDiv.querySelector('.chat-welcome');
         if (welcome) welcome.remove();
 
@@ -180,22 +220,31 @@ class ChatWidget {
 
         messagesDiv.appendChild(messageDiv);
 
-        // 영화 카드 추가
+        // ⭐ 영화 카드 추가 (처음 3개)
         if (movies && movies.length > 0) {
+            this.displayedCount = movies.length;
+            
             const moviesDiv = document.createElement('div');
             moviesDiv.className = 'chat-message bot';
+            moviesDiv.id = 'movie-cards-container';  // ⭐ ID 추가
             
-            let moviesHTML = '<div class="chat-message-avatar">🎬</div><div class="chat-message-content">';
+            let moviesHTML = '<div class="chat-message-avatar">🎬</div><div class="chat-message-content" id="movies-content">';
             
-            movies.slice(0, 3).forEach(movie => {
+            movies.forEach(movie => {
                 const year = movie.release_date && movie.release_date !== '미정' 
-                    ? movie.release_date.substring(0, 4) 
+                    ? movie.release_date.split('-')[0] 
                     : '미정';
+                const poster = movie.poster_path || 'assets/logo.png';
+                const rating = movie.vote_average || 'N/A';
                 
                 moviesHTML += `
-                    <div class="chat-movie-card" onclick="window.open('https://www.themoviedb.org/search?query=${encodeURIComponent(movie.title)}', '_blank')">
-                        <h5>🎬 ${movie.title} (${year})</h5>
-                        <p>⭐ ${movie.vote_average}/10</p>
+                    <div class="chat-movie-card">
+                        <img src="${poster}" alt="${movie.title}" onerror="this.src='assets/logo.png'">
+                        <div class="chat-movie-info">
+                            <h4>${movie.title}</h4>
+                            <p>⭐ ${rating}/10</p>
+                            <p>${year}</p>
+                        </div>
                     </div>
                 `;
             });
@@ -203,9 +252,91 @@ class ChatWidget {
             moviesHTML += '</div>';
             moviesDiv.innerHTML = moviesHTML;
             messagesDiv.appendChild(moviesDiv);
-        }
 
-        // 스크롤 하단으로
+            // ⭐ 더보기 버튼 추가 (표시된 개수 < 전체 개수)
+            if (this.displayedCount < this.allMovies.length) {
+                this.addLoadMoreButton();
+            }
+
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+    }
+
+    // ⭐ 더보기 버튼 추가
+    addLoadMoreButton() {
+        const messagesDiv = document.getElementById('chat-messages');
+        const remaining = this.allMovies.length - this.displayedCount;
+        
+        const loadMoreDiv = document.createElement('div');
+        loadMoreDiv.className = 'chat-message bot';
+        loadMoreDiv.id = 'load-more-container';
+        
+        loadMoreDiv.innerHTML = `
+            <div class="chat-message-avatar">📋</div>
+            <div class="chat-message-content">
+                <button class="chat-load-more-btn" onclick="chatWidget.loadMoreMovies()">
+                    더보기 (+${remaining}개) 🔽
+                </button>
+            </div>
+        `;
+        
+        messagesDiv.appendChild(loadMoreDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // ⭐ 더 많은 영화 로드
+    loadMoreMovies() {
+        const nextCount = Math.min(this.displayedCount + 3, this.allMovies.length);
+        const newMovies = this.allMovies.slice(this.displayedCount, nextCount);
+        
+        if (newMovies.length === 0) return;
+        
+        // 영화 카드 추가
+        const moviesContent = document.getElementById('movies-content');
+        
+        newMovies.forEach(movie => {
+            const year = movie.release_date && movie.release_date !== '미정' 
+                ? movie.release_date.split('-')[0] 
+                : '미정';
+            const poster = movie.poster_path || 'assets/logo.png';
+            const rating = movie.vote_average || 'N/A';
+            
+            const cardHTML = `
+                <div class="chat-movie-card fade-in">
+                    <img src="${poster}" alt="${movie.title}" onerror="this.src='assets/logo.png'">
+                    <div class="chat-movie-info">
+                        <h4>${movie.title}</h4>
+                        <p>⭐ ${rating}/10</p>
+                        <p>${year}</p>
+                    </div>
+                </div>
+            `;
+            
+            moviesContent.insertAdjacentHTML('beforeend', cardHTML);
+        });
+        
+        // 표시 개수 업데이트
+        this.displayedCount = nextCount;
+        
+        // 더보기 버튼 업데이트 또는 제거
+        const loadMoreContainer = document.getElementById('load-more-container');
+        
+        if (this.displayedCount >= this.allMovies.length) {
+            // 모두 표시했으면 버튼 제거
+            if (loadMoreContainer) {
+                loadMoreContainer.remove();
+            }
+        } else {
+            // 남은 개수 업데이트
+            const remaining = this.allMovies.length - this.displayedCount;
+            const btn = loadMoreContainer.querySelector('.chat-load-more-btn');
+            if (btn) {
+                btn.textContent = `더보기 (+${remaining}개) 🔽`;
+            }
+        }
+        
+        // 스크롤
+        const messagesDiv = document.getElementById('chat-messages');
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
@@ -214,38 +345,33 @@ class ChatWidget {
         const typingDiv = document.createElement('div');
         typingDiv.className = 'chat-message bot';
         typingDiv.id = 'typing-indicator';
+        
         typingDiv.innerHTML = `
             <div class="chat-message-avatar">🤖</div>
             <div class="chat-message-content">
-                <div class="chat-message-bubble">
-                    <div class="chat-typing">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
+                <div class="chat-typing">
+                    <span></span>
+                    <span></span>
+                    <span></span>
                 </div>
             </div>
         `;
+        
         messagesDiv.appendChild(typingDiv);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
     removeTypingIndicator() {
         const typing = document.getElementById('typing-indicator');
-        if (typing) typing.remove();
+        if (typing) {
+            typing.remove();
+        }
     }
 }
 
-// 제안 버튼 클릭 핸들러
-function sendSuggestion(text) {
-    const input = document.getElementById('chat-input');
-    input.value = text;
-    if (window.chatWidget) {
-        window.chatWidget.sendMessage();
-    }
-}
+// ⭐ 전역 변수로 선언 (더보기 버튼에서 접근 가능)
+let chatWidget;
 
-// 초기화
 document.addEventListener('DOMContentLoaded', () => {
-    window.chatWidget = new ChatWidget();
+    chatWidget = new ChatWidget();
 });

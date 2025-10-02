@@ -1063,6 +1063,123 @@ function updateAllMoviesCount() {
 
 
 
+// ==================== 필터 기능 ====================
+
+function toggleFilterPanel() {
+    const panel = document.getElementById('filter-panel');
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        loadFilterOptions();
+    } else {
+        panel.style.display = 'none';
+    }
+}
+
+async function loadFilterOptions() {
+    try {
+        const options = await API.getFilterOptions();
+        
+        // 장르
+        const genreSelect = document.getElementById('filter-genre');
+        genreSelect.innerHTML = '<option value="">전체</option>';
+        options.genres.forEach(genre => {
+            genreSelect.innerHTML += `<option value="${genre}">${genre}</option>`;
+        });
+        
+        // 국가
+        const countrySelect = document.getElementById('filter-country');
+        countrySelect.innerHTML = '<option value="">전체</option>';
+        options.countries.forEach(country => {
+            countrySelect.innerHTML += `<option value="${country}">${country}</option>`;
+        });
+        
+        // 연도
+        const yearSelect = document.getElementById('filter-year');
+        yearSelect.innerHTML = '<option value="">전체</option>';
+        options.years.forEach(year => {
+            yearSelect.innerHTML += `<option value="${year}">${year}</option>`;
+        });
+        
+    } catch (error) {
+        console.error('필터 옵션 로드 실패:', error);
+    }
+}
+
+async function applyFilters() {
+    const filters = {
+        query: document.getElementById('search-input').value,
+        genre: document.getElementById('filter-genre').value,
+        country: document.getElementById('filter-country').value,
+        year: document.getElementById('filter-year').value,
+        minRating: document.getElementById('filter-min-rating').value,
+        maxRating: document.getElementById('filter-max-rating').value,
+        limit: 100
+    };
+    
+    try {
+        // 필터 API 대신 기본 검색 사용
+        const params = new URLSearchParams();
+        if (filters.query) params.append('query', filters.query);
+        if (filters.genre) params.append('genre', filters.genre);
+        if (filters.country) params.append('country', filters.country);
+        if (filters.year) params.append('year', filters.year);
+        if (filters.minRating) params.append('min_rating', filters.minRating);
+        if (filters.maxRating) params.append('max_rating', filters.maxRating);
+        
+        const queryString = params.toString();
+        const url = `${API_BASE}/api/movies${queryString ? '?' + queryString : ''}`;
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('필터링 실패');
+        
+        const movies = await response.json();
+        
+        // 필터 패널 닫기
+        document.getElementById('filter-panel').style.display = 'none';
+        
+        const mainContent = document.getElementById('main-content');
+        
+        if (movies.length === 0) {
+            mainContent.innerHTML = `
+                <div class="search-results">
+                    <div class="results-header">
+                        <h2>필터 결과</h2>
+                        <button class="btn btn-secondary" onclick="showHome()">홈으로</button>
+                    </div>
+                    <p class="text-center text-muted" style="padding: 3rem;">조건에 맞는 영화가 없습니다.</p>
+                </div>
+            `;
+        } else {
+            mainContent.innerHTML = `
+                <div class="search-results">
+                    <div class="results-header">
+                        <h2>필터 결과 (${movies.length}개)</h2>
+                        <button class="btn btn-secondary" onclick="showHome()">홈으로</button>
+                    </div>
+                    <div class="ranking-grid">
+                        ${movies.map(movie => UIUtils.renderMovieCard(movie, false)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        UIUtils.showToast(`${movies.length}개의 영화를 찾았습니다`, 'success');
+        
+    } catch (error) {
+        console.error('필터 적용 실패:', error);
+        UIUtils.showToast('필터 적용 실패', 'error');
+    }
+}
+
+function resetFilters() {
+    document.getElementById('filter-genre').value = '';
+    document.getElementById('filter-country').value = '';
+    document.getElementById('filter-year').value = '';
+    document.getElementById('filter-min-rating').value = '';
+    document.getElementById('filter-max-rating').value = '';
+    
+    UIUtils.showToast('필터가 초기화되었습니다', 'info');
+}
 
 
 
@@ -1088,3 +1205,7 @@ window.closeMovieSelectionModal = closeMovieSelectionModal;
 window.selectMovieForCrawl = selectMovieForCrawl;
 window.switchTab = switchTab;
 window.loadAllMovies = loadAllMovies;
+window.toggleFilterPanel = toggleFilterPanel;
+window.loadFilterOptions = loadFilterOptions;
+window.applyFilters = applyFilters;
+window.resetFilters = resetFilters;

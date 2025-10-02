@@ -1,9 +1,10 @@
 # backend/rag_chat.py
+# ⭐ 모든 조합 검색 가능한 포괄적 알고리즘
 
 import os
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List, Dict
+from typing import List, Dict, Set
 import requests
 from dotenv import load_dotenv
 
@@ -16,126 +17,170 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 
-# OpenAI 클라이언트 초기화 (선택사항)
+# OpenAI 클라이언트
 client = None
 if OPENAI_API_KEY:
     try:
         from openai import OpenAI
         client = OpenAI(api_key=OPENAI_API_KEY)
-        print("✅ OpenAI 클라이언트 초기화 성공 (보조 기능)")
+        print("✅ OpenAI 클라이언트 초기화 성공")
     except Exception as e:
-        print(f"⚠️ OpenAI 없이 작동 (TMDB만 사용): {e}")
-        client = None
-else:
-    print("ℹ️ OpenAI 없이 작동 (TMDB만 사용)")
+        print(f"⚠️ OpenAI 없이 작동: {e}")
 
 
-# 🎬 하드코딩된 키워드 매핑 데이터베이스
+# 🎬 포괄적 키워드 데이터베이스
 KEYWORD_DATABASE = {
     # ===== 장르 =====
     "액션": ["action"],
-    "공포": ["horror"],
-    "코미디": ["comedy"],
-    "로맨스": ["romance"],
-    "멜로": ["romance"],
-    "스릴러": ["thriller"],
+    "공포": ["horror", "scary"],
+    "코미디": ["comedy", "funny"],
+    "로맨스": ["romance", "romantic"],
+    "멜로": ["romance", "melodrama"],
+    "스릴러": ["thriller", "suspense"],
     "SF": ["science fiction", "sci-fi"],
     "공상과학": ["science fiction"],
     "판타지": ["fantasy"],
-    "애니메이션": ["animation"],
+    "애니메이션": ["animation", "animated"],
     "애니": ["animation"],
     "드라마": ["drama"],
-    "범죄": ["crime"],
+    "범죄": ["crime", "criminal"],
     "미스터리": ["mystery"],
-    "다큐": ["documentary"],
-    "음악": ["music"],
-    "뮤지컬": ["musical"],
-    "전쟁": ["war"],
+    "전쟁": ["war", "battle", "military"],
     "서부극": ["western"],
+    "뮤지컬": ["musical"],
+    "다큐멘터리": ["documentary"],
+    "다큐": ["documentary"],
     
-    # ===== 테마/소재 =====
-    "스파이": ["spy", "agent", "007"],
-    "히어로": ["superhero", "marvel", "dc"],
-    "슈퍼히어로": ["superhero"],
-    "마블": ["marvel"],
-    "좀비": ["zombie"],
-    "귀신": ["ghost"],
+    # ===== 배경/설정 =====
+    "전쟁": ["war", "battle", "military"],
+    "우주": ["space", "galaxy", "cosmic"],
+    "바다": ["ocean", "sea", "underwater"],
+    "학교": ["school", "high school", "college", "university"],
+    "병원": ["hospital", "medical"],
+    "감옥": ["prison", "jail"],
+    "사막": ["desert"],
+    "정글": ["jungle"],
+    "도시": ["city", "urban"],
+    "시골": ["rural", "countryside"],
+    "미래": ["future", "futuristic"],
+    "과거": ["past", "historical", "period"],
+    "중세": ["medieval"],
+    "현대": ["modern", "contemporary"],
+    "뉴욕": ["new york"],
+    "도쿄": ["tokyo"],
+    "파리": ["paris"],
+    "런던": ["london"],
+    "서울": ["seoul"],
+    
+    # ===== 소재/테마 =====
+    "인형": ["doll", "annabelle", "puppet", "chucky"],
+    "애나벨": ["annabelle"],
+    "처키": ["chucky"],
+    "좀비": ["zombie", "undead"],
+    "귀신": ["ghost", "spirit", "haunting"],
     "물귀신": ["ring", "ghost water"],
-    "악마": ["demon", "devil"],
-    "마법": ["magic", "wizard"],
-    "마술": ["magic"],
-    "우주": ["space", "galaxy"],
-    "외계인": ["alien"],
-    "로봇": ["robot"],
-    "AI": ["artificial intelligence"],
-    "인공지능": ["artificial intelligence"],
-    "자동차": ["car", "fast"],
-    "차": ["car"],
-    "경주": ["racing", "race"],
-    "레이스": ["racing"],
-    "재난": ["disaster"],
-    "생존": ["survival"],
-    "탐정": ["detective"],
-    "형사": ["detective", "police"],
-    "경찰": ["police"],
-    "해커": ["hacker"],
-    "시간여행": ["time travel"],
-    "타임": ["time"],
-    "좀비": ["zombie"],
+    "악마": ["demon", "devil", "exorcist", "possession"],
     "뱀파이어": ["vampire"],
     "늑대인간": ["werewolf"],
-    "괴물": ["monster"],
-    "공룡": ["dinosaur"],
+    "괴물": ["monster", "creature"],
+    "외계인": ["alien", "extraterrestrial"],
+    "로봇": ["robot", "android"],
+    "AI": ["artificial intelligence", "AI"],
+    "공룡": ["dinosaur", "jurassic"],
     "상어": ["shark"],
-    "동물": ["animal"],
-    "가족": ["family"],
-    "학교": ["school"],
-    "청춘": ["youth", "teen"],
-    "복수": ["revenge"],
-    "사랑": ["love", "romance"],
-    "전염병": ["pandemic", "virus"],
-    "바이러스": ["virus"],
-    "감옥": ["prison"],
-    "탈옥": ["escape", "prison"],
+    "마법": ["magic", "wizard", "witch"],
+    "초능력": ["superpower", "psychic"],
+    "히어로": ["superhero", "hero"],
+    "슈퍼히어로": ["superhero"],
+    
+    # ===== 직업/캐릭터 =====
+    "스파이": ["spy", "agent", "espionage"],
+    "탐정": ["detective", "investigator"],
+    "경찰": ["police", "cop"],
+    "형사": ["detective", "police"],
+    "의사": ["doctor", "surgeon"],
+    "간호사": ["nurse"],
+    "군인": ["soldier", "military"],
     "해적": ["pirate"],
-    "중세": ["medieval"],
-    "사무라이": ["samurai"],
-    "닌자": ["ninja"],
-    "무술": ["martial arts"],
-    "권투": ["boxing"],
-    "격투": ["fighting"],
-    "마피아": ["mafia"],
-    "갱": ["gang"],
+    "카우보이": ["cowboy", "western"],
+    "암살자": ["assassin", "hitman"],
+    "킬러": ["killer", "assassin"],
+    "연쇄살인마": ["serial killer"],
+    "해커": ["hacker"],
+    "과학자": ["scientist"],
+    "교사": ["teacher"],
+    "학생": ["student"],
+    "변호사": ["lawyer"],
+    "기자": ["journalist", "reporter"],
+    
+    # ===== 사건/플롯 =====
+    "복수": ["revenge"],
+    "살인": ["murder", "killing"],
+    "납치": ["kidnapping", "abduction"],
     "강도": ["heist", "robbery"],
-    "은행강도": ["heist bank"],
+    "은행강도": ["bank heist"],
+    "탈옥": ["escape", "prison break"],
+    "테러": ["terrorism", "terrorist"],
+    "재난": ["disaster", "catastrophe"],
+    "전염병": ["pandemic", "virus", "outbreak"],
+    "좀비바이러스": ["zombie virus"],
+    "핵전쟁": ["nuclear war"],
+    "시간여행": ["time travel"],
+    "평행세계": ["parallel universe"],
+    "꿈": ["dream"],
+    "기억상실": ["amnesia", "memory loss"],
+    "정체성": ["identity"],
+    "사랑": ["love"],
+    "이별": ["breakup", "separation"],
+    "가족": ["family"],
+    "우정": ["friendship"],
+    "배신": ["betrayal"],
+    "음모": ["conspiracy"],
+    "미스터리": ["mystery"],
     
-    # ===== 분위기/느낌 =====
-    "감동": ["emotional", "touching"],
-    "감동적": ["emotional"],
-    "무서운": ["scary", "horror"],
-    "웃긴": ["funny", "comedy"],
-    "재미있는": ["funny"],
-    "슬픈": ["sad"],
-    "우울": ["dark", "depression"],
-    "어두운": ["dark"],
-    "밝은": ["bright", "happy"],
+    # ===== 분위기/톤 =====
+    "무서운": ["scary", "horror", "frightening"],
+    "슬픈": ["sad", "tearjerker", "emotional"],
+    "감동적인": ["touching", "emotional", "heartwarming"],
+    "웃긴": ["funny", "hilarious", "comedy"],
+    "재미있는": ["entertaining", "fun"],
+    "긴장감": ["suspense", "tension", "thriller"],
+    "스릴": ["thriller", "suspense"],
+    "어두운": ["dark", "noir"],
+    "밝은": ["bright", "cheerful"],
     "신나는": ["exciting", "action"],
-    "긴장감": ["thriller", "suspense"],
-    "스릴": ["thriller"],
-    "잔인한": ["brutal", "violent"],
-    "폭력": ["violent"],
-    "야한": ["erotic"],
-    "섹시": ["sexy"],
-    "로맨틱": ["romantic"],
-    "따뜻한": ["heartwarming"],
-    "현실적": ["realistic"],
-    "고전": ["classic"],
-    "명작": ["masterpiece", "classic"],
+    "로맨틱한": ["romantic"],
+    "따뜻한": ["heartwarming", "warm"],
+    "잔인한": ["brutal", "violent", "gore"],
+    "섹시한": ["sexy", "erotic"],
+    "우울한": ["depressing", "melancholic"],
     
-    # ===== 유명 시리즈/프랜차이즈 =====
+    # ===== 특정 요소 =====
+    "자동차": ["car", "racing", "fast"],
+    "경주": ["racing", "race"],
+    "비행기": ["airplane", "aviation"],
+    "헬리콥터": ["helicopter"],
+    "폭발": ["explosion", "bomb"],
+    "총격": ["shooting", "gunfight"],
+    "칼싸움": ["sword fight"],
+    "무술": ["martial arts", "kung fu"],
+    "권투": ["boxing"],
+    "격투기": ["fighting", "combat"],
+    "춤": ["dance", "dancing"],
+    "노래": ["singing", "music"],
+    "음악": ["music"],
+    "미술": ["art", "painting"],
+    "요리": ["cooking", "food"],
+    "스포츠": ["sports"],
+    "축구": ["soccer", "football"],
+    "야구": ["baseball"],
+    "농구": ["basketball"],
+    
+    # ===== 시리즈/프랜차이즈 =====
+    "마블": ["marvel"],
     "어벤져스": ["avengers"],
     "아이언맨": ["iron man"],
-    "스파이더맨": ["spider man"],
+    "스파이더맨": ["spider man", "spiderman"],
     "배트맨": ["batman"],
     "슈퍼맨": ["superman"],
     "해리포터": ["harry potter"],
@@ -146,12 +191,10 @@ KEYWORD_DATABASE = {
     "에이리언": ["alien"],
     "프레데터": ["predator"],
     "쥬라기": ["jurassic"],
-    "공룡": ["jurassic"],
     "분노의질주": ["fast furious"],
-    "분노": ["fast"],
     "미션임파서블": ["mission impossible"],
-    "제임스본드": ["james bond"],
-    "본": ["bond", "bourne"],
+    "제임스본드": ["james bond", "007"],
+    "본": ["bourne"],
     "킹스맨": ["kingsman"],
     "매트릭스": ["matrix"],
     "인셉션": ["inception"],
@@ -159,44 +202,50 @@ KEYWORD_DATABASE = {
     "다크나이트": ["dark knight"],
     "조커": ["joker"],
     "기생충": ["parasite"],
+    "부산행": ["train to busan"],
+    "올드보이": ["oldboy"],
     
     # ===== 감독 =====
     "놀란": ["nolan"],
     "타란티노": ["tarantino"],
     "스필버그": ["spielberg"],
-    "봉준호": ["bong joon"],
-    "박찬욱": ["park chan"],
+    "봉준호": ["bong joon ho"],
+    "박찬욱": ["park chan wook"],
     
-    # ===== 배우 =====
-    "톰크루즈": ["tom cruise"],
-    "키아누리브스": ["keanu reeves"],
-    "디카프리오": ["dicaprio"],
-    "브래드피트": ["brad pitt"],
-    "송강호": ["song kang"],
-    "이병헌": ["lee byung"],
+    # ===== 기타 =====
+    "최신": ["latest", "recent", "new"],
+    "인기": ["popular", "trending"],
+    "명작": ["masterpiece", "classic"],
+    "고전": ["classic", "old"],
 }
 
-# 인기/최신 키워드
 POPULAR_KEYWORDS = ["최신", "요즘", "인기", "핫한", "지금", "추천", "2024", "2025", "올해"]
 
 
-def extract_keywords(question: str) -> List[str]:
-    """질문에서 키워드 추출 및 영어 검색어로 변환"""
+def extract_keywords(question: str) -> Dict[str, List[str]]:
+    """질문에서 모든 키워드 추출 및 분류"""
     question_lower = question.lower()
-    search_terms = []
-    matched_keywords = []
     
-    # 키워드 매칭
+    matched_keywords = {
+        "korean": [],  # 한글 키워드
+        "english": []  # 영어 검색어
+    }
+    
     for korean, english_list in KEYWORD_DATABASE.items():
         if korean in question:
-            search_terms.extend(english_list)
-            matched_keywords.append(korean)
+            matched_keywords["korean"].append(korean)
+            matched_keywords["english"].extend(english_list)
     
-    print(f"🔍 매칭된 키워드: {matched_keywords}")
-    return search_terms
+    # 중복 제거
+    matched_keywords["english"] = list(set(matched_keywords["english"]))
+    
+    print(f"🔍 매칭된 한글 키워드: {matched_keywords['korean']}")
+    print(f"🔍 영어 검색어: {matched_keywords['english'][:5]}...")  # 처음 5개만 출력
+    
+    return matched_keywords
 
 
-def search_movies_tmdb(query: str, language: str = "ko-KR") -> List[Dict]:
+def search_movies_tmdb(query: str, language: str = "ko-KR", page: int = 1) -> List[Dict]:
     """TMDB API로 영화 검색"""
     if not TMDB_API_KEY:
         print("❌ TMDB API 키가 없습니다!")
@@ -207,7 +256,7 @@ def search_movies_tmdb(query: str, language: str = "ko-KR") -> List[Dict]:
         "api_key": TMDB_API_KEY,
         "query": query,
         "language": language,
-        "page": 1,
+        "page": page,
         "include_adult": False
     }
     
@@ -216,8 +265,9 @@ def search_movies_tmdb(query: str, language: str = "ko-KR") -> List[Dict]:
         response.raise_for_status()
         data = response.json()
         
-        # 인기순으로 정렬 (평점 * 투표수)
         movies = data.get("results", [])
+        
+        # 평점 * 투표수로 정렬
         movies_sorted = sorted(
             movies,
             key=lambda x: x.get('vote_average', 0) * x.get('vote_count', 0),
@@ -225,7 +275,7 @@ def search_movies_tmdb(query: str, language: str = "ko-KR") -> List[Dict]:
         )
         
         results = []
-        for movie in movies_sorted[:10]:
+        for movie in movies_sorted:
             results.append({
                 "title": movie.get("title"),
                 "release_date": movie.get("release_date", "미정"),
@@ -236,7 +286,7 @@ def search_movies_tmdb(query: str, language: str = "ko-KR") -> List[Dict]:
                 "genre_ids": movie.get("genre_ids", [])
             })
         
-        print(f"✅ TMDB 검색 완료: {len(results)}개 영화 발견")
+        print(f"✅ TMDB 검색 완료 ('{query}', 페이지 {page}): {len(results)}개")
         return results
         
     except Exception as e:
@@ -262,7 +312,7 @@ def get_popular_movies(language: str = "ko-KR") -> List[Dict]:
         data = response.json()
         
         results = []
-        for movie in data.get("results", [])[:10]:
+        for movie in data.get("results", [])[:20]:
             results.append({
                 "title": movie.get("title"),
                 "release_date": movie.get("release_date", "미정"),
@@ -279,221 +329,142 @@ def get_popular_movies(language: str = "ko-KR") -> List[Dict]:
         return []
 
 
-def find_movies_by_description(question: str) -> tuple:
-    """질문 분석 후 영화 검색 (개선된 우선순위)"""
+def find_movies_by_description(question: str, max_results: int = 20) -> tuple:
+    """
+    ⭐ 포괄적 검색 알고리즘
+    - 다중 키워드 조합 지원
+    - 예: "액션 영화 중에 전쟁 배경", "공포 영화 인형 나오는거" 등
+    """
     
-    # 1. 인기/최신 영화 요청 감지
+    print(f"\n{'='*60}")
+    print(f"📩 검색 질문: {question}")
+    print(f"{'='*60}")
+    
+    # 1. 인기 영화 요청 감지
     if any(keyword in question for keyword in POPULAR_KEYWORDS):
-        print("🔥 인기 영화 모드 활성화")
+        print("🔥 인기 영화 모드")
         popular = get_popular_movies()
         if popular:
-            return popular[:8], []
+            return popular[:max_results], []
     
     # 2. 키워드 추출
-    search_terms = extract_keywords(question)
+    keywords = extract_keywords(question)
+    korean_keywords = keywords["korean"]
+    english_terms = keywords["english"]
+    
+    if not english_terms:
+        print("❌ 키워드를 찾을 수 없습니다.")
+        return [], []
     
     all_movies = []
+    seen_titles = set()
     
-    # 🎯 전략 1: 특정 영화 직접 검색 (최우선!)
-    specific_movies = {
-        # 공포
-        "물귀신": ["The Ring 2002", "Ringu", "Dark Water", "Shutter 2004"],
-        "링": ["The Ring 2002"],
-        "귀신": ["The Conjuring", "Insidious", "The Sixth Sense", "Poltergeist"],
-        "좀비": ["Train to Busan", "World War Z", "28 Days Later", "Zombieland"],
-        "악마": ["The Exorcist", "The Omen", "Hereditary"],
-        "공포": ["The Conjuring", "Hereditary", "It", "The Shining"],
+    # ⭐ 전략 1: 모든 키워드 조합 검색 (가장 정확)
+    if len(english_terms) >= 2:
+        # 2-3개 키워드 조합으로 검색
+        print(f"\n🎯 전략 1: 다중 키워드 조합 검색")
         
-        # 액션
-        "스파이": ["Mission Impossible Fallout", "Casino Royale", "Kingsman", "Atomic Blonde"],
-        "자동차": ["Fast Five", "Baby Driver", "Drive 2011", "Mad Max Fury Road"],
-        "경주": ["Rush 2013", "Ford v Ferrari", "Gran Turismo"],
-        "레이스": ["Rush 2013", "Days of Thunder"],
-        "히어로": ["Avengers Endgame", "Iron Man", "The Dark Knight", "Spider-Man"],
-        "슈퍼히어로": ["Avengers", "Iron Man", "Batman"],
-        
-        # SF/판타지
-        "우주": ["Interstellar", "Gravity", "The Martian", "2001 A Space Odyssey"],
-        "외계인": ["Arrival", "E.T.", "District 9", "Close Encounters"],
-        "로봇": ["Terminator 2", "I Robot", "Ex Machina", "Wall-E"],
-        "AI": ["Ex Machina", "Her", "A.I. Artificial Intelligence"],
-        "시간여행": ["Back to the Future", "Looper", "Edge of Tomorrow"],
-        "타임": ["About Time", "Tenet", "Interstellar"],
-        
-        # 시리즈/프랜차이즈
-        "마블": ["Avengers Endgame", "Iron Man", "Spider-Man No Way Home", "Black Panther"],
-        "어벤져스": ["Avengers Endgame", "Avengers Infinity War", "Avengers Age of Ultron"],
-        "아이언맨": ["Iron Man", "Iron Man 2", "Iron Man 3"],
-        "스파이더맨": ["Spider-Man No Way Home", "Spider-Man Homecoming"],
-        "배트맨": ["The Dark Knight", "Batman Begins", "The Dark Knight Rises"],
-        "해리포터": ["Harry Potter Sorcerer Stone", "Harry Potter Chamber Secrets"],
-        "반지의제왕": ["Lord of the Rings Fellowship", "Lord of the Rings Two Towers"],
-        "스타워즈": ["Star Wars Empire Strikes Back", "Star Wars A New Hope"],
-        "분노의질주": ["Fast Five", "Furious 7", "Fast Furious 6"],
-        "미션임파서블": ["Mission Impossible Fallout", "Mission Impossible Rogue Nation"],
-        "본": ["The Bourne Identity", "The Bourne Ultimatum"],
-        "매트릭스": ["The Matrix", "The Matrix Reloaded"],
-        "터미네이터": ["Terminator 2 Judgment Day", "The Terminator"],
-        "에이리언": ["Alien", "Aliens"],
-        "쥬라기": ["Jurassic Park", "Jurassic World"],
-        
-        # 한국 영화
-        "기생충": ["Parasite 2019"],
-        "부산": ["Train to Busan"],
-        "올드보이": ["Oldboy 2003"],
-        "살인의추억": ["Memories of Murder"],
-        
-        # 감독
-        "놀란": ["Tenet", "Interstellar", "Inception", "The Dark Knight"],
-        "타란티노": ["Pulp Fiction", "Django Unchained", "Kill Bill"],
-        "봉준호": ["Parasite 2019", "Snowpiercer", "The Host"],
-    }
-    
-    matched_specific = False
-    for keyword, movie_titles in specific_movies.items():
-        if keyword in question:
-            print(f"🎯 전략 1 - '{keyword}' 키워드 직접 검색")
-            matched_specific = True
-            for title in movie_titles:
-                movies = search_movies_tmdb(title)
-                if movies:
-                    all_movies.extend(movies[:2])  # 각 제목당 2개씩
+        # 최대 3개 키워드 조합
+        for i in range(min(3, len(english_terms))):
+            for j in range(i+1, min(4, len(english_terms))):
+                combo = f"{english_terms[i]} {english_terms[j]}"
+                print(f"   검색: '{combo}'")
+                
+                movies = search_movies_tmdb(combo)
+                for movie in movies[:5]:
+                    if movie['title'] not in seen_titles:
+                        seen_titles.add(movie['title'])
+                        all_movies.append(movie)
+                
+                # 충분한 결과가 나오면 조기 종료
+                if len(all_movies) >= 10:
+                    break
             
-            # 특정 키워드 매칭되면 충분한 결과가 있으면 바로 리턴
-            if len(all_movies) >= 5:
+            if len(all_movies) >= 10:
                 break
     
-    # 중복 제거
-    if all_movies:
-        seen = set()
-        unique = []
-        for movie in all_movies:
-            if movie['title'] not in seen:
-                seen.add(movie['title'])
-                unique.append(movie)
-        all_movies = unique
-    
-    # 특정 영화 검색으로 충분한 결과가 나왔으면 리턴
-    if matched_specific and len(all_movies) >= 3:
-        print(f"✅ 특정 영화 검색 성공: {len(all_movies)}개 영화")
-        return all_movies[:10], search_terms
-    
-    # 🎯 전략 2: 조합된 검색어로 시도
-    if search_terms:
-        # ring 같은 애매한 단어는 제외
-        filtered_terms = [t for t in search_terms if t not in ['ring']]
-        if filtered_terms:
-            unique_terms = list(dict.fromkeys(filtered_terms))[:3]
-            search_query = " ".join(unique_terms)
-            print(f"🎯 전략 2 - 조합 검색: '{search_query}'")
-            movies = search_movies_tmdb(search_query)
-            if movies:
-                all_movies.extend(movies)
-    
-    # 🎯 전략 3: 개별 키워드로 각각 검색
-    if len(all_movies) < 5 and search_terms:
-        print("🎯 전략 3 - 개별 검색 시작")
-        # 특정 단어들은 개별 검색에서 제외
-        exclude_words = ['ring', 'ghost', 'water']
-        for term in search_terms[:3]:
-            if term in exclude_words:
-                continue
+    # ⭐ 전략 2: 개별 키워드 검색
+    if len(all_movies) < 5:
+        print(f"\n🎯 전략 2: 개별 키워드 검색")
+        
+        for term in english_terms[:5]:  # 최대 5개
             print(f"   검색: '{term}'")
             movies = search_movies_tmdb(term)
-            if movies:
-                all_movies.extend(movies[:2])
+            
+            for movie in movies[:3]:
+                if movie['title'] not in seen_titles:
+                    seen_titles.add(movie['title'])
+                    all_movies.append(movie)
     
-    # 중복 제거
-    if all_movies:
-        seen_titles = set()
-        unique_movies = []
-        for movie in all_movies:
+    # ⭐ 전략 3: 전체 질문으로 검색
+    if len(all_movies) < 3:
+        print(f"\n🎯 전략 3: 전체 질문 검색")
+        movies = search_movies_tmdb(question)
+        
+        for movie in movies[:5]:
             if movie['title'] not in seen_titles:
                 seen_titles.add(movie['title'])
-                unique_movies.append(movie)
-        all_movies = unique_movies
+                all_movies.append(movie)
     
-    # 🎯 전략 4: 질문 전체로 검색
-    if len(all_movies) < 3:
-        print("🎯 전략 4 - 질문 전체로 검색")
-        movies = search_movies_tmdb(question)
-        if movies:
-            all_movies.extend(movies)
-    
-    # 🎯 전략 5: GPT 사용 (있다면)
-    if len(all_movies) < 3 and client:
-        print("🤖 전략 5 - GPT로 재시도")
-        try:
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "영화 제목을 영어로 정확하게 5개 추천. 개봉연도 포함. 한 줄에 하나씩."},
-                    {"role": "user", "content": question}
-                ],
-                temperature=0.3,
-                max_tokens=150
-            )
-            
-            movie_titles_text = response.choices[0].message.content.strip()
-            movie_titles = [title.strip() for title in movie_titles_text.split('\n') if title.strip()]
-            
-            for title in movie_titles[:5]:
-                movies = search_movies_tmdb(title)
-                if movies:
-                    all_movies.append(movies[0])
-                    
-        except Exception as e:
-            print(f"❌ GPT 실패: {e}")
-    
-    # 최종 결과 정리
-    if all_movies:
-        # 평점순 정렬
-        all_movies.sort(key=lambda x: x['vote_average'] * x['vote_count'], reverse=True)
-        # 중복 제거
-        seen = set()
-        unique = []
-        for movie in all_movies:
-            if movie['title'] not in seen:
-                seen.add(movie['title'])
-                unique.append(movie)
+    # ⭐ 전략 4: 영어로 된 검색어 조합
+    if len(all_movies) < 5 and len(english_terms) >= 2:
+        print(f"\n🎯 전략 4: 긴 조합 검색")
+        long_query = " ".join(english_terms[:4])
+        print(f"   검색: '{long_query}'")
         
-        print(f"✅ 최종 검색 성공: {len(unique)}개 영화")
-        return unique[:10], search_terms
+        movies = search_movies_tmdb(long_query)
+        for movie in movies[:5]:
+            if movie['title'] not in seen_titles:
+                seen_titles.add(movie['title'])
+                all_movies.append(movie)
     
-    print("❌ 모든 검색 전략 실패")
-    return [], []
+    # 최종 정렬 (평점 * 투표수)
+    if all_movies:
+        all_movies.sort(
+            key=lambda x: x['vote_average'] * x['vote_count'],
+            reverse=True
+        )
+    
+    print(f"\n✅ 최종 결과: {len(all_movies)}개 영화")
+    if all_movies:
+        print(f"🎬 상위 영화: {[m['title'] for m in all_movies[:5]]}")
+    
+    return all_movies[:max_results], korean_keywords
 
 
-def generate_answer_with_movies(question: str, movies: List[Dict]) -> str:
-    """영화 기반 답변 생성"""
+def generate_answer_with_movies(question: str, movies: List[Dict], keywords: List[str]) -> str:
+    """답변 생성"""
     
     if not movies:
-        return """죄송합니다. 관련 영화를 찾지 못했습니다. 😢
+        return f"""죄송합니다. '{question}'에 대한 영화를 찾지 못했습니다. 😢
 
-다음과 같이 질문해보세요:
-- "액션 영화 중에 스파이물"
-- "무서운 귀신 나오는 영화"
-- "웃긴 로맨스 영화"
-- "최신 인기 영화"
-- "마블 히어로 영화"
+다른 키워드로 검색해보세요:
+- "액션 영화 중에 전쟁 배경"
+- "공포 영화 인형 나오는거"
+- "로맨스 영화인데 슬픈거"
+- "SF 영화 우주 배경"
 """
     
-    # GPT 없이 답변 생성
-    answer = f"'{question}'에 대한 추천 영화입니다! 🎬\n\n"
+    # 키워드 강조
+    keyword_text = f" ({', '.join(keywords[:3])})" if keywords else ""
+    
+    answer = f"'{question}'{keyword_text}에 대한 추천 영화입니다! 🎬\n\n"
     
     for i, movie in enumerate(movies[:5], 1):
         year = movie['release_date'][:4] if movie['release_date'] != '미정' else '미정'
         rating = movie['vote_average']
         
         answer += f"**{i}. {movie['title']}** ({year})\n"
-        answer += f"⭐ 평점: {rating}/10 ({movie['vote_count']}명)\n"
+        answer += f"⭐ 평점: {rating}/10\n"
         
-        # 줄거리 간략히
         if movie['overview'] and movie['overview'] != "줄거리 정보 없음":
-            overview_short = movie['overview'][:80] + "..." if len(movie['overview']) > 80 else movie['overview']
-            answer += f"📝 {overview_short}\n"
+            overview = movie['overview'][:100] + "..." if len(movie['overview']) > 100 else movie['overview']
+            answer += f"📝 {overview}\n"
         
         answer += "\n"
+    
+    if len(movies) > 5:
+        answer += f"\n💡 {len(movies) - 5}개의 영화가 더 있습니다!"
     
     return answer.strip()
 
@@ -501,27 +472,20 @@ def generate_answer_with_movies(question: str, movies: List[Dict]) -> str:
 class Query(BaseModel):
     question: str
     top_k: int = 5
-    model: str = "gpt-3.5-turbo"
+    max_results: int = 20
 
 
 @chat_app.post("/chat")
 def chat(query: Query):
-    print(f"\n{'='*60}")
-    print(f"📩 질문 수신: {query.question}")
-    print(f"{'='*60}")
-    
-    movies, keywords = find_movies_by_description(query.question)
-    
-    print(f"📊 최종 결과: {len(movies)}개 영화")
-    if movies:
-        print(f"🎬 영화 목록: {[m['title'] for m in movies[:3]]}")
-    
-    answer = generate_answer_with_movies(query.question, movies)
+    """챗봇 엔드포인트"""
+    movies, keywords = find_movies_by_description(query.question, query.max_results)
+    answer = generate_answer_with_movies(query.question, movies, keywords)
     
     return {
         "answer": answer,
-        "movies": movies[:query.top_k],
-        "search_method": "키워드 매칭 + TMDB",
+        "movies": movies,  # ⭐ 전체 목록 반환 (더보기용)
+        "total_count": len(movies),
+        "search_method": "다중 키워드 조합 검색",
         "matched_keywords": keywords
     }
 
@@ -539,9 +503,20 @@ def root():
 
 @chat_app.get("/test")
 def test_search():
-    results = search_movies_tmdb("spy action")
-    return {
-        "query": "spy action",
-        "count": len(results),
-        "results": results[:3]
-    }
+    # 테스트 예시
+    test_queries = [
+        "액션 영화 중에 전쟁 배경",
+        "공포 영화 인형 나오는거",
+        "로맨스 영화인데 슬픈거"
+    ]
+    
+    results = {}
+    for q in test_queries:
+        movies, keywords = find_movies_by_description(q, 5)
+        results[q] = {
+            "count": len(movies),
+            "keywords": keywords,
+            "movies": [m['title'] for m in movies[:3]]
+        }
+    
+    return results

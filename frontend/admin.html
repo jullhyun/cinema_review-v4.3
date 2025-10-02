@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 페이지 - Cinema Review</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/admin.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="admin-page">
+    <div id="toast-container"></div>
+
+    <div class="admin-container">
+        <aside class="admin-sidebar">
+            <div class="admin-logo">
+                <img src="assets/logo.png" alt="Cinema Review">
+                <h2>Admin Panel</h2>
+            </div>
+            
+            <nav class="admin-nav">
+                <button class="nav-item active" data-section="dashboard">
+                    <i class="fas fa-chart-line"></i> 대시보드
+                </button>
+                <button class="nav-item" data-section="movies">
+                    <i class="fas fa-film"></i> 영화 관리
+                </button>
+                <button class="nav-item" data-section="reviews">
+                    <i class="fas fa-comment"></i> 리뷰 관리
+                </button>
+                <button class="nav-item" data-section="users">
+                    <i class="fas fa-users"></i> 사용자 관리
+                </button>
+                <button class="nav-item" data-section="crawl">
+                    <i class="fas fa-download"></i> 크롤링 관리
+                </button>
+            </nav>
+
+            <div class="admin-footer">
+                <button class="btn btn-secondary" onclick="location.href='index.html'">
+                    <i class="fas fa-home"></i> 홈으로
+                </button>
+                <button class="btn btn-ghost" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i> 로그아웃
+                </button>
+            </div>
+        </aside>
+
+        <main class="admin-main">
+            <header class="admin-header">
+                <h1 id="section-title">대시보드</h1>
+                <div class="admin-user-info">
+                    <span id="admin-username">관리자님</span>
+                </div>
+            </header>
+
+            <div class="admin-content" id="admin-content"></div>
+        </main>
+    </div>
+
+    <div id="edit-movie-modal" class="modal-overlay" style="display: none;">
+        <div class="modal admin-modal">
+            <div class="modal-header">
+                <h3>영화 정보 수정</h3>
+                <button class="modal-close" onclick="closeEditMovieModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-movie-form">
+                    <input type="hidden" id="edit-movie-id">
+                    
+                    <div class="form-group">
+                        <label>제목</label>
+                        <input type="text" id="edit-movie-title" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>장르</label>
+                        <input type="text" id="edit-movie-genre">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>감독</label>
+                        <input type="text" id="edit-movie-director">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>개봉년도</label>
+                        <input type="number" id="edit-movie-year">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>상영시간 (분)</label>
+                        <input type="number" id="edit-movie-duration">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>줄거리</label>
+                        <textarea id="edit-movie-synopsis" rows="5"></textarea>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="submit" class="btn btn-primary">저장</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeEditMovieModal()">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

@@ -93,6 +93,52 @@
                 <button id="search-btn" class="search-button">
                     <i class="fas fa-search"></i>
                 </button>
+                <!-- 🆕 필터 버튼 추가 -->
+                <button id="filter-toggle-btn" class="search-button" onclick="toggleFilterPanel()" style="margin-left: 10px;">
+                    <i class="fas fa-filter"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 🆕 필터 패널 추가 (검색바 바로 아래) -->
+        <div id="filter-panel" class="filter-panel" style="display: none;">
+            <div class="filter-content">
+                <h3>🎬 영화 필터</h3>
+                
+                <div class="filter-group">
+                    <label>장르</label>
+                    <select id="filter-genre">
+                        <option value="">전체</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>국가</label>
+                    <select id="filter-country">
+                        <option value="">전체</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>개봉연도</label>
+                    <select id="filter-year">
+                        <option value="">전체</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>평점</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="number" id="filter-min-rating" placeholder="최소" min="0" max="10" step="0.1" style="width: 80px;">
+                        <span>~</span>
+                        <input type="number" id="filter-max-rating" placeholder="최대" min="0" max="10" step="0.1" style="width: 80px;">
+                    </div>
+                </div>
+                
+                <div class="filter-actions">
+                    <button class="btn btn-primary" onclick="applyFilters()">적용</button>
+                    <button class="btn btn-secondary" onclick="resetFilters()">초기화</button>
+                </div>
             </div>
         </div>
 

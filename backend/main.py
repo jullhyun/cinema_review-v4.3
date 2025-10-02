@@ -68,82 +68,108 @@ def get_db():
 def read_root():
     return {"message": "Cinema Review API", "status": "running"}
 
-@app.get("/api/movies", response_model=List[schemas.MovieSummary])
+# 기존 영화 API를 이렇게 수정
+@app.get("/api/movies")
 def get_movies(
+    query: Optional[str] = None,
+    genre: Optional[str] = None,
+    country: Optional[str] = None,
+    year: Optional[str] = None,
+    min_rating: Optional[float] = None,
+    max_rating: Optional[float] = None,
+    sort_by: Optional[str] = "latest",
     skip: int = 0,
     limit: int = 20,
-    search: Optional[str] = None,
-    sort_by: str = "latest",
     db: Session = Depends(get_db)
 ):
-    """영화 목록 조회"""
-    query = db.query(models.Movie)
+    """필터링 가능한 영화 목록 조회"""
+    movies_query = db.query(models.Movie)
     
-    # 검색
-    if search:
-        query = query.filter(models.Movie.영화이름.contains(search))
+    # 제목 검색
+    if query:
+        movies_query = movies_query.filter(models.Movie.영화이름.like(f'%{query}%'))
+    
+    # 장르 필터
+    if genre:
+        movies_query = movies_query.filter(models.Movie.장르.like(f'%{genre}%'))
+    
+    # 국가 필터
+    if country:
+        movies_query = movies_query.filter(models.Movie.국가.like(f'%{country}%'))
+    
+    # 연도 필터
+    if year:
+        from sqlalchemy import func, extract
+        movies_query = movies_query.filter(extract('year', models.Movie.개봉일) == int(year))
+    
+    # 평점 필터
+    if min_rating is not None:
+        movies_query = movies_query.filter(models.Movie.전문가별점 >= min_rating)
+    if max_rating is not None:
+        movies_query = movies_query.filter(models.Movie.전문가별점 <= max_rating)
     
     # 정렬
-    if sort_by == "latest":
-        query = query.order_by(models.Movie.개봉일.desc())
-    elif sort_by == "rating":
-        # 평점은 계산된 값이므로 Python에서 정렬
-        pass
+    if sort_by == "rating_high":
+        movies_query = movies_query.order_by(models.Movie.전문가별점.desc())
+    elif sort_by == "rating_low":
+        movies_query = movies_query.order_by(models.Movie.전문가별점.asc())
     elif sort_by == "title":
-        query = query.order_by(models.Movie.영화이름)
+        movies_query = movies_query.order_by(models.Movie.영화이름)
+    else:  # latest
+        movies_query = movies_query.order_by(models.Movie.개봉일.desc())
     
-    # 영화 가져오기
-    if sort_by == "rating":
-        movies = query.all()
-    else:
-        movies = query.offset(skip).limit(limit).all()
+    movies = movies_query.offset(skip).limit(limit).all()
+    return [schemas.MovieSummary(
+        id=m.영화ID,
+        title=m.영화이름,
+        poster=m.이미지URL or "https://via.placeholder.com/300x400",
+        genre=m.장르 or "미분류",
+        releaseYear=m.개봉일.year if m.개봉일 else 2024,
+        rating=float(m.전문가별점) if m.전문가별점 else 0.0,
+        criticRating=float(m.전문가별점) if m.전문가별점 else 0.0,
+        audienceRating=float(m.관객별점) if m.관객별점 else 0.0
+    ) for m in movies]
+
+
+# 새로운 필터 옵션 API 추가
+@app.get("/api/movies/filter-options")
+def get_filter_options(db: Session = Depends(get_db)):
+    """필터링 옵션 반환"""
+    from sqlalchemy import func, extract
     
-    # 결과 생성
-    result = []
-    for movie in movies:
-        # 평점 계산
-        rating = 0.0
-        count = 0
-        critic_rating = 0.0
-        audience_rating = 0.0
-        
-        if movie.전문가별점:
-            critic_rating = float(movie.전문가별점)
-            rating += critic_rating
-            count += 1
-        
-        if movie.관객별점:
-            audience_rating = float(movie.관객별점)
-            rating += audience_rating
-            count += 1
-        
-        if count > 0:
-            rating = rating / count
-        
-        # 리뷰 수 계산
-        review_count = db.query(models.Review).filter(
-            models.Review.movie_id == movie.영화ID
-        ).count()
-        
-        # ⭐ MovieSummary에 필요한 모든 필드 포함
-        result.append(schemas.MovieSummary(
-            id=movie.영화ID,
-            title=movie.영화이름,
-            poster=movie.이미지URL or "https://via.placeholder.com/300x400?text=No+Image",
-            releaseYear=movie.개봉일.year if movie.개봉일 else 2024,
-            genre=movie.장르 or "미분류",
-            rating=round(rating, 1),
-            criticRating=round(critic_rating, 1),      # ⭐ 추가!
-            audienceRating=round(audience_rating, 1),  # ⭐ 추가!
-            reviewCount=review_count
-        ))
+    # 장르 목록
+    genres_raw = db.query(models.Movie.장르).filter(models.Movie.장르.isnot(None)).distinct().all()
+    genres = set()
+    for (g,) in genres_raw:
+        if g:
+            for genre in g.split(','):
+                genres.add(genre.strip())
     
-    # 평점순 정렬
-    if sort_by == "rating":
-        result.sort(key=lambda x: x.rating, reverse=True)
-        result = result[skip:skip+limit]  # 페이지네이션
+    # 국가 목록
+    countries_raw = db.query(models.Movie.국가).filter(models.Movie.국가.isnot(None)).distinct().all()
+    countries = set()
+    for (c,) in countries_raw:
+        if c:
+            for country in c.split(','):
+                countries.add(country.strip())
     
-    return result
+    # 연도 목록
+    years_raw = db.query(extract('year', models.Movie.개봉일)).filter(models.Movie.개봉일.isnot(None)).distinct().all()
+    years = sorted([str(int(y[0])) for y in years_raw if y[0]], reverse=True)
+    
+    # 평점 범위
+    ratings = db.query(
+        func.min(models.Movie.전문가별점),
+        func.max(models.Movie.전문가별점)
+    ).first()
+    
+    return {
+        "genres": sorted(list(genres)),
+        "countries": sorted(list(countries)),
+        "years": years,
+        "minRating": float(ratings[0]) if ratings[0] else 0.0,
+        "maxRating": float(ratings[1]) if ratings[1] else 10.0
+    }
 
 # 전체 영화 개수 조회
 @app.get("/api/movies/count")

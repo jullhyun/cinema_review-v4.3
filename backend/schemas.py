@@ -95,3 +95,22 @@ class BookmarkResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class MovieResponse(BaseModel):
+    id: int
+    movieId: str
+    title: str
+    imageUrl: Optional[str] = None
+    criticRating: Optional[float] = None
+    audienceRating: Optional[float] = None
+    runtime: Optional[int] = None
+    releaseYear: Optional[str] = None
+    genre: Optional[str] = None
+    country: Optional[str] = None
+    director: Optional[str] = None
+    cast: Optional[str] = None
+    synopsis: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
