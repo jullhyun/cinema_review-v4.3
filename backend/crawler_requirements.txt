@@ -1,0 +1,11 @@
+# 크롤링 전용 패키지 (sql_0929_final.py 실행용)
+undetected-chromedriver==3.5.4
+selenium==4.15.2
+beautifulsoup4==4.12.2
+pandas==2.1.3
+mysql-connector-python==8.3.0
+python-dotenv==1.0.0
+lxml==4.9.3
+
+# 참고: 이 패키지들은 크롤링 시에만 필요합니다
+# 백엔드 실행에는 backend/requirements.txt를 사용하세요

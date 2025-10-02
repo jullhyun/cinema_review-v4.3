@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cinema Review - 아이디 찾기</title>
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+    <div class="page active">
+        <div class="background-overlay"></div>
+        <div class="container">
+            <!-- Header -->
+            <div class="header">
+                <div class="brand" onclick="window.location.href='index.html'" style="cursor: pointer;">
+                    <div class="logo">
+                        <img src="assets/logo.png" alt="Cinema Review Logo">
+                    </div>
+                    <div class="brand-text">
+                        <h1>Cinema Review</h1>
+                        <div class="brand-subtitle">
+                            <div class="stars">
+                                <span class="star">★</span>
+                                <span class="star">★</span>
+                                <span class="star">★</span>
+                            </div>
+                            <span class="tagline">MOVIE REVIEWS</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Find ID Panel -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">아이디 찾기</h2>
+                    <p class="card-description">가입 시 입력한 이메일과 휴대폰 번호로 아이디를 찾습니다</p>
+                </div>
+                <div class="card-content">
+                    <form id="findIdForm" class="form">
+                        <div class="input-group">
+                            <label for="findEmail" class="label">이메일</label>
+                            <div class="input-wrapper">
+                                <input 
+                                    type="email" 
+                                    id="findEmail" 
+                                    placeholder="이메일을 입력하세요" 
+                                    class="input"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="findPhone" class="label">휴대폰 번호</label>
+                            <div class="input-wrapper">
+                                <input 
+                                    type="tel" 
+                                    id="findPhone" 
+                                    placeholder="010-0000-0000" 
+                                    class="input"
+                                    required
+                                >
+                            </div>
+                        </div>
+
+                        <!-- 결과 표시 영역 -->
+                        <div id="findIdResult" style="display: none; padding: 1rem; background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 0.625rem; text-align: center; margin-bottom: 1rem;">
+                            <p style="color: #a1a1aa; margin-bottom: 0.5rem; font-size: 0.875rem;">찾은 아이디:</p>
+                            <p id="foundIdText" style="color: #D4AF37; font-size: 1.25rem; font-weight: 600;"></p>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">아이디 찾기</button>
+                        <button type="button" class="btn btn-secondary" onclick="window.location.href='reset-password.html'">비밀번호 재설정</button>
+                        
+                        <div class="forgot-password">
+                            <button type="button" class="link" onclick="window.location.href='login.html'">로그인으로 돌아가기</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+                <p>© 2024 Cinema Review. All rights reserved.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+</body>
+</html>

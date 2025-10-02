@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마이페이지 - Cinema Review</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="minor-default">
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay" style="display: none;">
+        <!-- Profile Edit Modal -->
+        <div id="profile-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>프로필 수정</h3>
+                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                </div>
+                <form id="profile-form" class="modal-body">
+                    <div class="form-group">
+                        <label for="edit-nickname">닉네임</label>
+                        <input type="text" id="edit-nickname" name="nickname" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-email">이메일</label>
+                        <input type="email" id="edit-email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-phone">휴대폰 번호</label>
+                        <input type="tel" id="edit-phone" name="phone" required>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit" class="btn btn-primary">저장</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Confirm Delete Modal -->
+        <div id="confirm-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>삭제 확인</h3>
+                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirm-message" style="margin-bottom: 1.5rem;">정말 삭제하시겠습니까?</p>
+                    <div class="modal-actions">
+                        <button type="button" id="confirm-delete-btn" class="btn btn-danger">삭제</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">취소</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo-container" onclick="window.location.href='index.html'" style="cursor: pointer;">
+                <img src="assets/logo.png" alt="Cinema Review" class="logo">
+                <h1 class="logo-text">Cinema Review</h1>
+            </div>
+        </header>
+
+        <!-- User Authentication -->
+        <div class="user-auth-container">
+            <div class="user-auth" id="user-auth">
+                <!-- 동적으로 생성됨 -->
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main id="main-content">
+            <!-- Profile Section -->
+            <section class="profile card" style="margin-bottom: 2rem;">
+                <h2 style="margin-bottom: 1.5rem; color: var(--accent-color);">내 프로필</h2>
+                <div style="display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+                        <div id="user-avatar" style="width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-color), var(--secondary-color)); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: var(--primary-color); font-weight: 600;">
+                        </div>
+                    </div>
+                    <div style="flex: 1; min-width: 250px;">
+                        <div style="margin-bottom: 1rem;">
+                            <div style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 0.25rem;">사용자명</div>
+                            <div id="user-username" style="color: var(--text-light); font-size: 1.125rem; font-weight: 500;"></div>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <div style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 0.25rem;">닉네임</div>
+                            <div id="user-nickname" style="color: var(--text-light); font-size: 1.125rem; font-weight: 500;"></div>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <div style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 0.25rem;">이메일</div>
+                            <div id="user-email" style="color: var(--text-light);"></div>
+                        </div>
+                        <div style="margin-bottom: 1.5rem;">
+                            <div style="color: var(--text-muted); font-size: 0.875rem; margin-bottom: 0.25rem;">가입일</div>
+                            <div id="user-joined" style="color: var(--text-light);"></div>
+                        </div>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <button id="editProfileBtn" class="btn btn-primary">프로필 수정</button>
+                            <a href="reset-password.html" style="color: var(--secondary-color); text-decoration: underline; display: flex; align-items: center;">비밀번호 변경</a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <!-- My Bookmarks Section -->
+            <section class="my-bookmarks card" style="margin-bottom: 2rem;">
+                <div class="review-header">
+                    <h2 style="color: var(--accent-color);"><i class="fas fa-heart"></i> 찜한 영화</h2>
+                    <span id="bookmark-count" style="color: var(--text-muted); font-size: 0.875rem;">총 0개</span>
+                </div>
+                <div id="myBookmarksList" style="margin-top: 1.5rem;">
+                    <!-- 동적으로 생성됨 -->
+                </div>
+            </section>
+            
+            <!-- My Reviews Section -->
+            <section class="my-reviews card" style="margin-bottom: 2rem;">
+                <div class="review-header">
+                    <h2 style="color: var(--accent-color);">내 리뷰</h2>
+                    <span id="review-count" style="color: var(--text-muted); font-size: 0.875rem;">총 0개</span>
+                </div>
+                <div class="user-review-list" id="myReviewsList">
+                    <!-- 동적으로 생성됨 -->
+                </div>
+            </section>
+
+            <!-- Ratings Summary Section -->
+            <section class="ratings-summary">
+                <h2 style="margin-bottom: 1.5rem; color: var(--accent-color); text-align: center;">평가 요약</h2>
+                <div class="ratings-grid">
+                    <div class="rating-item">
+                        <div class="rating-label">내가 작성한 리뷰</div>
+                        <div class="star-rating" style="justify-content: center; margin: 0.5rem 0;">
+                            <span class="star filled" style="font-size: 1.5rem;">★</span>
+                        </div>
+                        <h3 id="total-reviews" style="color: var(--accent-color); margin-bottom: 0.25rem;">0개</h3>
+                        <div class="rating-count">총 리뷰 수</div>
+                    </div>
+                    <div class="rating-item">
+                        <div class="rating-label">평균 평점</div>
+                        <div id="avg-rating-stars" class="star-rating" style="justify-content: center; margin: 0.5rem 0;">
+                            <!-- 동적으로 생성됨 -->
+                        </div>
+                        <h3 id="avg-rating" style="color: var(--accent-color); margin-bottom: 0.25rem;">0.0</h3>
+                        <div class="rating-count">내 평점 평균</div>
+                    </div>
+                    <div class="rating-item">
+                        <div class="rating-label">최근 활동</div>
+                        <div class="star-rating" style="justify-content: center; margin: 0.5rem 0;">
+                            <span class="star filled" style="font-size: 1.5rem;">★</span>
+                        </div>
+                        <h3 id="recent-activity" style="color: var(--accent-color); margin-bottom: 0.25rem;">-</h3>
+                        <div class="rating-count">마지막 리뷰</div>
+                    </div>
+                </div>
+                <div class="total-rating">
+                    <div class="rating-label" style="margin-bottom: 1rem;">전체 활동 요약</div>
+                    <p id="activity-summary" style="color: var(--text-muted);"></p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/mypage.js"></script>
+</body>
+</html>

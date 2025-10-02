@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>전체 영화 - Cinema Review</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="minor-default">
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo-container" onclick="window.location.href='index.html'" style="cursor: pointer;">
+                <img src="assets/logo.png" alt="Cinema Review" class="logo">
+                <h1 class="logo-text">Cinema Review</h1>
+            </div>
+        </header>
+
+        <!-- User Authentication -->
+        <div class="user-auth-container">
+            <div class="user-auth" id="user-auth">
+                <!-- 동적으로 생성됨 -->
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main id="main-content">
+            <!-- Controls Section -->
+            <section class="controls-section" style="margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h2 style="color: var(--accent-color); margin: 0;">전체 영화 목록</h2>
+                        <p id="total-count" class="text-muted" style="margin: 0.5rem 0 0 0;">총 0개 영화</p>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                        <!-- 검색 -->
+                        <div style="position: relative;">
+                            <input type="text" 
+                                   id="search-input" 
+                                   placeholder="영화 제목 검색..." 
+                                   style="padding: 0.75rem 2.5rem 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-light); width: 250px;">
+                            <i class="fas fa-search" style="position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                        </div>
+                        
+                        <!-- 정렬 -->
+                        <select id="sort-select" style="padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.05); color: var(--text-light); cursor: pointer;">
+                            <option value="latest">최신순</option>
+                            <option value="rating">평점순</option>
+                            <option value="title">제목순</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Movies Grid -->
+            <section id="movies-section">
+                <div id="movies-grid" class="movies-grid">
+                    <!-- 영화 카드들이 동적으로 추가됨 -->
+                </div>
+                
+                <!-- Loading -->
+                <div id="loading" style="text-align: center; padding: 3rem; display: none;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--accent-color);"></i>
+                    <p class="text-muted" style="margin-top: 1rem;">영화 목록을 불러오는 중...</p>
+                </div>
+                
+                <!-- No Results -->
+                <div id="no-results" style="text-align: center; padding: 3rem; display: none;">
+                    <i class="fas fa-film" style="font-size: 3rem; color: var(--text-muted); opacity: 0.5;"></i>
+                    <p class="text-muted" style="margin-top: 1rem;">검색 결과가 없습니다.</p>
+                </div>
+            </section>
+
+            <!-- Pagination -->
+            <section id="pagination-section" style="margin-top: 3rem; display: flex; justify-content: center; align-items: center; gap: 1rem;">
+                <!-- 페이지네이션 버튼들이 동적으로 추가됨 -->
+            </section>
+        </main>
+    </div>
+
+    <!-- 기존 JS 파일들 -->
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/data-manager.js"></script>
+    <script src="js/components.js"></script>
+
+    <!-- 전체 영화 페이지 전용 스크립트 -->
+    <script>
+        // 전역 변수
+        let currentPage = 1;
+        const moviesPerPage = 20;
+        let currentSearch = '';
+        let currentSort = 'latest';
+        let totalMovies = 0;
+
+        // 페이지 초기화
+        document.addEventListener('DOMContentLoaded', async () => {
+            await ComponentRenderer.renderUserAuth();
+            await loadMovies();
+            
+            // 검색 이벤트
+            const searchInput = document.getElementById('search-input');
+            let searchTimeout;
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    currentSearch = e.target.value.trim();
+                    currentPage = 1;
+                    loadMovies();
+                }, 500);
+            });
+            
+            // 정렬 이벤트
+            document.getElementById('sort-select').addEventListener('change', (e) => {
+                currentSort = e.target.value;
+                currentPage = 1;
+                loadMovies();
+            });
+        });
+
+        // 영화 목록 로드
+        async function loadMovies() {
+            const moviesGrid = document.getElementById('movies-grid');
+            const loading = document.getElementById('loading');
+            const noResults = document.getElementById('no-results');
+            
+            // UI 초기화
+            moviesGrid.innerHTML = '';
+            loading.style.display = 'block';
+            noResults.style.display = 'none';
+            
+            try {
+                // API 호출
+                const skip = (currentPage - 1) * moviesPerPage;
+                const params = new URLSearchParams({
+                    skip: skip,
+                    limit: moviesPerPage,
+                    sort_by: currentSort
+                });
+                
+                if (currentSearch) {
+                    params.append('search', currentSearch);
+                }
+                
+                const response = await fetch(`http://localhost:8000/api/movies?${params}`);
+                const movies = await response.json();
+                
+                // 전체 개수 가져오기
+                const countParams = new URLSearchParams();
+                if (currentSearch) {
+                    countParams.append('search', currentSearch);
+                }
+                const countResponse = await fetch(`http://localhost:8000/api/movies/count?${countParams}`);
+                const countData = await countResponse.json();
+                totalMovies = countData.total;
+                
+                loading.style.display = 'none';
+                
+                // 결과 표시
+                if (movies.length === 0) {
+                    noResults.style.display = 'block';
+                    document.getElementById('total-count').textContent = '검색 결과 없음';
+                    document.getElementById('pagination-section').innerHTML = '';
+                    return;
+                }
+                
+                // 영화 카드 렌더링
+                movies.forEach(movie => {
+                    const card = createMovieCard(movie);
+                    moviesGrid.appendChild(card);
+                });
+                
+                // 총 개수 업데이트
+                updateTotalCount();
+                
+                // 페이지네이션 렌더링
+                renderPagination();
+                
+            } catch (error) {
+                console.error('영화 로드 실패:', error);
+                loading.style.display = 'none';
+                UIUtils.showToast('영화 목록을 불러오는데 실패했습니다.', 'error');
+            }
+        }
+
+        // 영화 카드 생성
+        function createMovieCard(movie) {
+            const card = document.createElement('div');
+            card.className = 'movie-card';
+            card.onclick = () => goToMovieDetail(movie.id);
+            
+            const poster = movie.poster || 'assets/logo.png';
+            const rating = movie.rating || movie.criticRating || movie.audienceRating || 0;
+            const reviewCount = movie.reviewCount || 0;
+            
+            card.innerHTML = `
+                <div class="movie-poster">
+                    <img src="${poster}" alt="${movie.title}" onerror="this.src='assets/logo.png'">
+                    <div class="movie-overlay">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                </div>
+                <div class="movie-info">
+                    <h3 class="movie-title">${movie.title}</h3>
+                    <p class="movie-genre">${movie.genre || '미분류'} · ${movie.releaseYear || '미정'}</p>
+                    <div class="movie-rating">
+                        <span class="rating-stars">
+                            ${renderStars(rating)}
+                        </span>
+                        <span class="rating-text">${rating.toFixed(1)}</span>
+                    </div>
+                    <p class="text-muted" style="font-size: 0.85rem; margin-top: 0.5rem;">
+                        <i class="fas fa-comment"></i> ${reviewCount}개 리뷰
+                    </p>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // 별점 렌더링
+        function renderStars(rating, maxRating = 10) {
+            const percentage = (rating / maxRating) * 100;
+            const fullStars = Math.floor(rating / 2);
+            const hasHalfStar = (rating % 2) >= 1;
+            let html = '';
+            
+            for (let i = 0; i < fullStars; i++) {
+                html += '<i class="fas fa-star"></i>';
+            }
+            if (hasHalfStar) {
+                html += '<i class="fas fa-star-half-alt"></i>';
+            }
+            const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+            for (let i = 0; i < emptyStars; i++) {
+                html += '<i class="far fa-star"></i>';
+            }
+            
+            return html;
+        }
+
+        // 총 개수 업데이트
+        function updateTotalCount() {
+            const startNum = (currentPage - 1) * moviesPerPage + 1;
+            const endNum = Math.min(currentPage * moviesPerPage, totalMovies);
+            document.getElementById('total-count').textContent = 
+                `총 ${totalMovies}개 영화 (${startNum}-${endNum}번째 표시)`;
+        }
+
+        // 페이지네이션 렌더링
+        function renderPagination() {
+            const paginationSection = document.getElementById('pagination-section');
+            paginationSection.innerHTML = '';
+            
+            const totalPages = Math.ceil(totalMovies / moviesPerPage);
+            
+            if (totalPages <= 1) return;
+            
+            // 이전 버튼
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'btn btn-secondary';
+            prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadMovies();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            };
+            paginationSection.appendChild(prevBtn);
+            
+            // 페이지 번호들
+            const maxPageButtons = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
+            let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
+            
+            if (endPage - startPage < maxPageButtons - 1) {
+                startPage = Math.max(1, endPage - maxPageButtons + 1);
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = i === currentPage ? 'btn btn-primary' : 'btn btn-secondary';
+                pageBtn.textContent = i;
+                pageBtn.onclick = () => {
+                    currentPage = i;
+                    loadMovies();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                };
+                paginationSection.appendChild(pageBtn);
+            }
+            
+            // 다음 버튼
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'btn btn-secondary';
+            nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    loadMovies();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            };
+            paginationSection.appendChild(nextBtn);
+        }
+
+        // 영화 상세 페이지로 이동
+        function goToMovieDetail(movieId) {
+            window.location.href = `index.html?movie=${movieId}`;
+        }
+    </script>
+</body>
+</html>

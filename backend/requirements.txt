@@ -1,0 +1,35 @@
+# FastAPI 및 서버
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+
+# 데이터베이스
+sqlalchemy==2.0.35
+pymysql==1.1.1
+python-multipart==0.0.9
+
+# 환경 변수
+python-dotenv==1.0.1
+
+# 데이터 검증
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# 암호화 및 인증
+cryptography==43.0.1
+bcrypt==4.2.0
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+
+# 웹 크롤링
+undetected-chromedriver==3.5.5
+selenium==4.25.0
+beautifulsoup4==4.12.3
+pandas==2.2.3
+lxml==5.3.0
+
+# 정적 파일 서빙
+aiofiles==24.1.0
+
+# AI 챗봇 (선택사항)
+openai==1.51.0
+requests==2.32.3
